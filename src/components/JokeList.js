@@ -6,49 +6,54 @@ import Joke from "./Joke";
 import { v4 as uuid } from "uuid";
 import "./JokeList.css";
 
-export default class JokeList extends Component {
+class JokeList extends Component {
   static defaultProps = {
     numJokesToGet: 10,
   };
-
   constructor(props) {
     super(props);
     this.state = {
       jokes: JSON.parse(window.localStorage.getItem("jokes") || "[]"),
-      loading: false,
+      loading: true,
     };
     this.seenJokes = new Set(this.state.jokes.map((j) => j.text));
+    console.log(this.seenJokes);
     this.handleClick = this.handleClick.bind(this);
   }
-
   componentDidMount() {
     if (this.state.jokes.length === 0) {
+      this.setState({ loading: true });
       this.getJokes();
     }
   }
-
   async getJokes() {
-    let jokes = [];
-    while (jokes.length < this.props.numJokesToGet) {
-      const res = await axios.get("https://icanhazdadjoke.com/", {
-        headers: { Accept: "application/json" },
-      });
-      let newJoke = res.data.joke;
-      if (!this.seenJokes.has(newJoke)) {
-        jokes.push({ id: uuid(), text: newJoke, votes: 0 });
-      } else {
+    try {
+      let jokes = [];
+      while (jokes.length < this.props.numJokesToGet) {
+        let res = await axios.get("https://icanhazdadjoke.com/", {
+          headers: { Accept: "application/json" },
+        });
+        let newJoke = res.data.joke;
+        if (!this.seenJokes.has(newJoke)) {
+          jokes.push({ id: uuid(), text: newJoke, votes: 0 });
+        } else {
+          console.log("FOUND A DUPLICATE!");
+          console.log(newJoke);
+        }
       }
+      this.setState(
+        (st) => ({
+          loading: false,
+          jokes: [...st.jokes, ...jokes],
+        }),
+        () =>
+          window.localStorage.setItem("jokes", JSON.stringify(this.state.jokes))
+      );
+    } catch (e) {
+      alert(e);
+      this.setState({ loading: false });
     }
-    this.setState(
-      (st) => ({
-        jokes: [...st.jokes, ...jokes],
-        loading: false,
-      }),
-      () =>
-        window.localStorage.setItem("jokes", JSON.stringify(this.state.jokes))
-    );
   }
-
   handleVote(id, delta) {
     this.setState(
       (st) => ({
@@ -60,11 +65,9 @@ export default class JokeList extends Component {
         window.localStorage.setItem("jokes", JSON.stringify(this.state.jokes))
     );
   }
-
   handleClick() {
     this.setState({ loading: true }, this.getJokes);
   }
-
   render() {
     if (this.state.loading) {
       return (
@@ -81,11 +84,12 @@ export default class JokeList extends Component {
           <h1 className="JokeList-title">
             <span>Dad</span> Jokes
           </h1>
-          <img src="https://assets.dryicons.com/uploads/icon/svg/8927/0eb14c71-38f2-433a-bfc8-23d9c99b3647.svg" alt="lol-logo"/>
+          <img src="https://assets.dryicons.com/uploads/icon/svg/8927/0eb14c71-38f2-433a-bfc8-23d9c99b3647.svg" />
           <button className="JokeList-getmore" onClick={this.handleClick}>
             Fetch Jokes
           </button>
         </div>
+
         <div className="JokeList-jokes">
           {jokes.map((j) => (
             <Joke
@@ -101,3 +105,5 @@ export default class JokeList extends Component {
     );
   }
 }
+
+export default JokeList;
